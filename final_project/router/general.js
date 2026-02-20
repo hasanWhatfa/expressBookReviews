@@ -3,6 +3,7 @@ let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
 const public_users = express.Router();
+const axios = require('axios');
 
 
 const doesExist = (username)=>{
@@ -42,23 +43,39 @@ public_users.post("/register", (req,res) => {
 });
 
 // Get the book list available in the shop
-public_users.get('/',function (req, res) {
-    return res.status(200).json({
-        books: books
-    })
+public_users.get('/', async function (req, res) {
+    try{
+        let bookList = await new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve(books);
+            }, 1000);
+        }
+        );
+        return res.status(200).json(bookList);
+    }
+    catch(error){
+        return res.status(500).json({error: "Failed to retrieve book list"});
+    }
 });
 
 // Get book details based on ISBN
-public_users.get('/isbn/:isbn',function (req, res) {
-    let isbn = req.params.isbn;
 
-    if(isbn && !isNaN(isbn)){
-        return res.status(200).json({book:books[isbn]})
-    }
-    else{
-        return res.status(403).send("Invalid ISBN!")
-    }
- });
+public_users.get('/isbn/:isbn', (req, res) => {
+    const { isbn } = req.params;
+
+    axios.get(`http://localhost:5000/books/${isbn}`)
+        .then((response) => {
+            // Handle successful response
+            return res.status(200).json(response.data);
+        })
+        .catch((error) => {
+            // Handle error response
+            return res.status(error.response?.status || 500).json({
+                message: "Failed to retrieve book by ISBN"
+            });
+        });
+});
+
   
 // Get book details based on author
 public_users.get('/author/:author',function (req, res) {
